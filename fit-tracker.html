@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Фит-трекер</title>
+<style>
+:root{--bg:#0f1115;--card:#1a1d24;--line:#2a2f3a;--tx:#eceff4;--mut:#8b93a3;--ac:#4ade80;--ac2:#60a5fa;--bad:#f87171;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:12px 14px 110px}
+.item{cursor:pointer}.chips span{cursor:pointer}
+h2{font-size:15px;color:var(--mut);margin:18px 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.tabs{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;background:#0f1115f2;border-top:1px solid var(--line);padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px));z-index:5;max-width:560px;margin:0 auto}
+.tabs button{flex:1;padding:14px 10px;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;font-size:15px}
+.tabs button.on{background:var(--ac);color:#06210f;border-color:var(--ac);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0}
+.row{display:flex;gap:8px;align-items:center}.sp{justify-content:space-between}
+button.b,label.b{display:inline-block;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:15px;text-align:center}
+.pri{background:var(--ac)!important;color:#06210f!important;border-color:var(--ac)!important;font-weight:700}
+input,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#12151b;color:var(--tx);font-size:16px}
+.bar{height:10px;background:#12151b;border-radius:6px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:var(--ac)}
+.big{font-size:28px;font-weight:700}.m{color:var(--mut);font-size:13px}
+.item{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid var(--line)}.item:first-child{border-top:0}
+.x{background:none;border:0;color:var(--bad);font-size:18px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hid{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chips span{background:#12151b;border:1px solid var(--line);border-radius:20px;padding:6px 10px;font-size:14px}
+</style></head><body>
+<div class="tabs"><button id="t1" class="on">🍽 Еда</button><button id="t2">💪 Тренировки</button></div>
+<div id="food"></div><div id="work" class="hid"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S={goal:{k:2800,p:150},food:{},work:{}};
+try{const r=localStorage.getItem('fit1');if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const save=()=>{try{localStorage.setItem('fit1',JSON.stringify(S))}catch(e){}};
+const dk=d=>{const z=new Date(d);return z.getFullYear()+'-'+String(z.getMonth()+1).padStart(2,'0')+'-'+String(z.getDate()).padStart(2,'0')};
+let day=new Date();let ex='pull';let panel='';let draft=null;let msg='';
+const DB=[["Куриная грудка",165,31,3.6,0],["Говядина варёная",250,26,16,0],["Лосось",208,20,13,0],["Тунец консервированный",128,28,1,0],["Яйцо (1 шт ≈ 60 г)",155,13,11,1.1],["Творог 5%",121,17,5,3],["Кефир 2.5%",53,3,2.5,4],["Молоко 2.5%",52,2.9,2.5,4.7],["Йогурт натуральный",66,5,3.2,4],["Сыр",350,25,27,0],["Рис варёный",130,2.7,.3,28],["Гречка варёная",110,4,1,21],["Макароны варёные",158,5.8,.9,31],["Овсянка сухая",370,13,7,62],["Картофель варёный",82,2,.4,17],["Хлеб",250,8,3,49],["Банан",89,1.1,.3,23],["Яблоко",52,.3,.2,14],["Огурец",15,.8,.1,3],["Помидор",20,1.1,.2,4],["Арахис",570,26,49,16],["Подсолнечное масло",899,0,100,0],["Сахар",399,0,0,100]];
+const r1=n=>Math.round(n*10)/10;
+function renderFood(){
+ const k=dk(day),L=S.food[k]||[];
+ const T=L.reduce((a,e)=>({k:a.k+e.k,p:a.p+e.p,f:a.f+e.f,c:a.c+e.c}),{k:0,p:0,f:0,c:0});
+ const pc=Math.min(100,T.k/S.goal.k*100);
+ let h=`<div class="row sp" style="margin:8px 0"><button class="b" onclick="mv(-1)">←</button><b>${dk(day)===dk(new Date())?'Сегодня':day.toLocaleDateString('ru',{day:'numeric',month:'long'})}</b><button class="b" onclick="mv(1)">→</button></div>
+ <div class="card"><div class="row sp"><div><span class="big">${Math.round(T.k)}</span> <span class="m">/ ${S.goal.k} ккал</span></div><div class="m">осталось ${Math.max(0,Math.round(S.goal.k-T.k))}</div></div>
+ <div class="bar"><i style="width:${pc}%;${T.k>S.goal.k?'background:var(--bad)':''}"></i></div>
+ <div class="m">Белок ${r1(T.p)} / ${S.goal.p} г</div><div class="bar"><i style="width:${Math.min(100,T.p/S.goal.p*100)}%;background:var(--ac2)"></i></div>
+ <div class="g3"><div><b>${r1(T.p)}</b><div class="m">Белки / ${S.goal.p}</div></div><div><b>${r1(T.f)}</b><div class="m">Жиры</div></div><div><b>${r1(T.c)}</b><div class="m">Углеводы</div></div></div>
+ <div class="m" style="margin-top:8px;text-align:right"><a href="#" onclick="panel='goal';renderFood();return false" style="color:var(--ac2)">изменить цель</a></div></div>
+ <div class="g3"><label class="b pri" id="ph">📷 Фото<input type="file" accept="image/*" class="hid" onchange="photo(this)"></label><button class="b" onclick="panel='db';renderFood()">📚 База</button><button class="b" onclick="draft={n:'',k:'',p:'',f:'',c:''};panel='man';renderFood()">✏️ Вручную</button></div>`;
+ if(msg)h+=`<div class="card m">${esc(msg)}</div>`;
+ if(panel==='db')h+=dbPanel();
+ if(panel==='man')h+=manPanel();
+ if(panel==='goal')h+=goalPanel();
+ RC=recents();if(!panel&&RC.length)h+=`<h2>Быстро добавить снова</h2><div class="chips">`+RC.map((e,i)=>`<span onclick="again(${i})">+ ${esc(e.n)} · ${Math.round(e.k)}</span>`).join('')+`</div>`;
+ h+=`<h2>Съедено</h2><div class="card">`+(L.length?L.map((e,i)=>`<div class="item"><div>${esc(e.n)}<div class="m">Б ${r1(e.p)} · Ж ${r1(e.f)} · У ${r1(e.c)}</div></div><div class="row"><b>${Math.round(e.k)}</b><button class="x" onclick="del(${i})">✕</button></div></div>`).join(''):'<div class="m">Пока пусто</div>')+`</div>`;
+ $('#food').innerHTML=h;if(panel==='db')fl();const pn=$('#food .pnl');if(pn)pn.scrollIntoView({block:'nearest'});
+}
+function dbPanel(){return `<div class="card pnl"><div class="row" style="margin-bottom:8px"><input id="q" placeholder="Поиск продукта" oninput="fl()"><button class="x" style="color:var(--mut)" onclick="panel='';renderFood()">✕</button></div><div id="dl"></div></div>`}
+function fl(){const q=($('#q').value||'').toLowerCase();$('#dl').innerHTML=DB.map((d,i)=>[d,i]).filter(([d])=>d[0].toLowerCase().includes(q)).map(([d,i])=>`<div class="item" onclick="pick(${i})"><span>${esc(d[0])}</span><span class="m">${d[1]} ккал/100г</span></div>`).join('')}
+let pk=null;
+function pick(i){pk=DB[i];const d=pk;$('#dl').innerHTML=`<div class="card"><b>${esc(d[0])}</b><div class="m">на 100 г: ${d[1]} ккал, Б ${d[2]}, Ж ${d[3]}, У ${d[4]}</div><div class="row" style="margin-top:8px"><input id="gr" type="number" inputmode="decimal" placeholder="Граммы" ${/Яйцо/.test(d[0])?'value="60"':''}><button class="b pri" onclick="addDb()">Добавить</button></div></div>`;$('#gr').focus()}
+function addDb(){const g=parseFloat($('#gr').value);if(!g||!pk)return;const f=g/100;add({n:pk[0]+' · '+g+' г',k:pk[1]*f,p:pk[2]*f,f:pk[3]*f,c:pk[4]*f})}
+function manPanel(){const d=draft||{};return `<div class="card pnl"><div class="row sp" style="margin-bottom:8px"><b>Новая запись</b><button class="x" style="color:var(--mut)" onclick="panel='';renderFood()">✕</button></div><input id="mn" placeholder="Название" value="${esc(d.n||'')}" style="margin-bottom:8px"><div class="g2"><input id="mk" type="number" inputmode="decimal" placeholder="Ккал" value="${d.k}"><input id="mp" type="number" inputmode="decimal" placeholder="Белки, г" value="${d.p}"><input id="mf" type="number" inputmode="decimal" placeholder="Жиры, г" value="${d.f}"><input id="mc" type="number" inputmode="decimal" placeholder="Углеводы, г" value="${d.c}"></div><button class="b pri" style="width:100%;margin-top:8px" onclick="addMan()">Добавить</button></div>`}
+function addMan(){const v=id=>parseFloat($(id).value)||0;if(!v('#mk'))return;add({n:$('#mn').value||'Продукт',k:v('#mk'),p:v('#mp'),f:v('#mf'),c:v('#mc')})}
+function add(e){const k=dk(day);(S.food[k]=S.food[k]||[]).push(e);save();panel='';draft=null;msg='';renderFood()}
+function del(i){S.food[dk(day)].splice(i,1);save();renderFood()}
+function mv(n){if(n>0&&dk(day)>=dk(new Date()))return;day=new Date(day.getTime()+n*864e5);renderFood()}
+function goalPanel(){return `<div class="card pnl"><div class="row sp"><b>Дневная цель</b><button class="x" style="color:var(--mut)" onclick="panel='';renderFood()">✕</button></div><div class="g2" style="margin-top:8px"><input id="gk" type="number" inputmode="numeric" value="${S.goal.k}"><input id="gp" type="number" inputmode="numeric" value="${S.goal.p}"></div><div class="g2 m"><span>ккал</span><span>белок, г</span></div><button class="b pri" style="width:100%;margin-top:8px" onclick="setGoal()">Сохранить</button></div>`}
+function setGoal(){const k=parseInt($('#gk').value),p=parseInt($('#gp').value);if(k>0)S.goal.k=k;if(p>0)S.goal.p=p;save();panel='';renderFood()}
+let RC=[];
+function recents(){const seen=new Set(),o=[];for(const k of Object.keys(S.food).sort().reverse())for(const e of [...S.food[k]].reverse()){if(!seen.has(e.n)){seen.add(e.n);o.push(e)}if(o.length>=6)return o}return o}
+function again(i){add({...RC[i]})}
+async function photo(inp){
+ const f=inp.files[0];if(!f)return;msg='Распознаю блюдо… (до минуты)';renderFood();
+ try{const sample=await claude.use('sample');if(!sample)throw {code:'none'};
+  const lim=await sample.limits();if(!lim.images)throw {code:'images_unavailable'};
+  const d=await sample.json('На фото еда. Оцени порцию и КБЖУ всей порции. Ответь только JSON: {"name":"название по-русски","grams":число,"kcal":число,"protein":число,"fat":число,"carbs":число}',{images:[f],cache:false});
+  draft={n:(d.name||'Блюдо')+(d.grams?' · ~'+Math.round(d.grams)+' г':''),k:Math.round(d.kcal||0),p:Math.round(d.protein||0),f:Math.round(d.fat||0),c:Math.round(d.carbs||0)};
+  msg='Оценка по фото приблизительная. Проверь и поправь значения.';panel='man';renderFood();
+ }catch(e){msg=(e&&e.code==='not_granted')?'Доступ к Claude не разрешён. Добавь еду из базы или вручную.':'Не удалось распознать фото ('+(e&&e.code||'ошибка')+'). Добавь из базы или вручную.';renderFood()}
+}
+const EX={pull:'Подтягивания',push:'Отжимания'};
+function renderWork(){
+ const k=dk(new Date());const W=n=>(S.work[k]&&S.work[k][n])||[];
+ const sets=W(ex),sum=a=>a.reduce((x,y)=>x+y,0);
+ const all=Object.values(S.work).flatMap(d=>d[ex]||[]);const rec=all.length?Math.max(...all):0;
+ const days=[];for(let i=13;i>=0;i--){const t=dk(Date.now()-i*864e5);days.push([t,sum((S.work[t]||{})[ex]||[])])}
+ const mx=Math.max(1,...days.map(d=>d[1]));
+ const bars=days.map((d,i)=>{const h=d[1]/mx*90;return `<rect x="${i*22+4}" y="${100-h}" width="16" height="${h}" rx="3" fill="${d[1]?'#4ade80':'#2a2f3a'}"/><text x="${i*22+12}" y="${96-h}" font-size="9" fill="#8b93a3" text-anchor="middle">${d[1]||''}</text>`}).join('');
+ $('#work').innerHTML=`<div class="g2" style="margin:8px 0"><button class="b ${ex==='pull'?'pri':''}" onclick="ex='pull';renderWork()">Подтягивания</button><button class="b ${ex==='push'?'pri':''}" onclick="ex='push';renderWork()">Отжимания</button></div>
+ <div class="card"><div class="g3"><div><span class="big">${sum(sets)}</span><div class="m">сегодня</div></div><div><span class="big">${sets.length}</span><div class="m">подходов</div></div><div><span class="big">${rec}</span><div class="m">рекорд за подход</div></div></div></div>
+ <div class="row"><input id="rp" type="number" inputmode="numeric" placeholder="Повторов в подходе" value="${sets.length?sets[sets.length-1]:''}" onkeydown="if(event.key==='Enter')addSet()"><button class="b pri" onclick="addSet()">+ Подход</button></div>
+ <div class="chips">${[5,8,10,12,15,20].map(n=>`<span onclick="$('#rp').value=${n}">${n}</span>`).join('')}</div>
+ <h2>Сегодня · ${EX[ex]}</h2><div class="card">${sets.length?sets.map((r,i)=>`<div class="item"><span>Подход ${i+1}</span><div class="row"><b>${r}</b><button class="x" onclick="delSet(${i})">✕</button></div></div>`).join(''):'<div class="m">Подходов пока нет</div>'}</div>
+ <h2>Всего повторов за 14 дней</h2><div class="card"><svg viewBox="0 0 312 104" width="100%" role="img" aria-label="График повторений">${bars}</svg></div>`;
+}
+function addSet(){const r=parseInt($('#rp').value);if(!r||r<1)return;const k=dk(new Date());const d=S.work[k]=S.work[k]||{};(d[ex]=d[ex]||[]).push(r);save();renderWork()}
+function delSet(i){S.work[dk(new Date())][ex].splice(i,1);save();renderWork()}
+function tab(n){scrollTo(0,0);$('#food').classList.toggle('hid',n!==1);$('#work').classList.toggle('hid',n!==2);$('#t1').classList.toggle('on',n===1);$('#t2').classList.toggle('on',n===2);n===1?renderFood():renderWork()}
+$('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
+renderFood();
+</script></body></html>
